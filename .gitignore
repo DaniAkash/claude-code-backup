@@ -1,0 +1,25 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+*.tgz
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# vite-plus / fallow caches
+.fallow/
+.vite-hooks/
+
+# Local backup output (never commit real backups: they contain secrets)
+/backups/
+*.claude-backup/
