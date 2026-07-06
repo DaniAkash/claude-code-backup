@@ -8,7 +8,7 @@ import { VERSION } from "./lib/version.ts";
 
 export function buildProgram(): Command {
   const program = new Command()
-    .name("claude-code-backup")
+    .name("cc-backup")
     .description("Snapshot Claude Code history and config into a timestamped backup")
     .version(VERSION);
   registerBackup(program);

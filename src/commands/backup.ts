@@ -64,7 +64,7 @@ async function runBackup(targetDirectory: string, opts: BackupOptions): Promise<
   const stamp = backupTimestamp(new Date());
   const backupRoot = join(targetDirectory, stamp);
 
-  log(`claude-code-backup ${VERSION}${dryRun ? "  (dry run)" : ""}`);
+  log(`cc-backup ${VERSION}${dryRun ? "  (dry run)" : ""}`);
   log(`target: ${backupRoot}`);
   log("");
 
@@ -138,7 +138,7 @@ async function writeManifest(
   result: CaptureResult,
 ): Promise<void> {
   const manifest = {
-    tool: "claude-code-backup",
+    tool: "cc-backup",
     version: VERSION,
     createdAt: new Date().toISOString(),
     timestamp: meta.stamp,

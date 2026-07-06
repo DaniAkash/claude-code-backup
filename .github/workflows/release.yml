@@ -1,0 +1,108 @@
+# Tag-triggered npm release + draft GitHub Release.
+#
+# How to cut a release:
+#   1. Bump "version" in package.json.
+#   2. Commit ("chore(release): X.Y.Z") -- chore(release) is filtered
+#      out of cliff.toml so the bump commit does not pollute the next
+#      changelog.
+#   3. git tag vX.Y.Z && git push origin main --tags   (e.g. v0.1.0)
+#   4. Wait for the workflow to finish, then publish the draft from the
+#      Releases page.
+#
+# Required repo secret (Settings -> Secrets and variables -> Actions):
+#   NPM_TOKEN -- automation token for npmjs.com with publish access.
+#
+# Required repo setting:
+#   Settings -> Actions -> General -> Workflow permissions -> Read and
+#   write permissions (so id-token: write works for npm provenance).
+
+name: Release (npm publish + draft GitHub release)
+
+on:
+  push:
+    tags:
+      - "v[0-9]*"
+
+permissions:
+  contents: write
+  id-token: write # required for npm provenance attestations
+
+jobs:
+  release:
+    name: Verify, publish, and draft release notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so git-cliff can walk back to the previous tag
+          # and compute the changelog range.
+          fetch-depth: 0
+
+      - name: Install Bun
+        # Reads the version from .bun-version.
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Node + npm (for the publish step)
+        # setup-node writes ~/.npmrc with the npmjs registry URL and the
+        # ${NODE_AUTH_TOKEN} placeholder. Node is here only for the
+        # publish step; every other step uses Bun.
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # A green tag must mean a green workspace. Re-run the full suite
+      # before publishing; never trust PR-time CI alone.
+      - name: Check (lint + format + fallow + typecheck)
+        run: bun run check
+      - name: Tests
+        run: bun test
+      - name: Build
+        run: bun run build
+
+      - name: Determine previous tag (for changelog range)
+        id: previous_tag
+        run: |
+          set +e
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*" "${GITHUB_REF_NAME}^" 2>/dev/null)
+          set -e
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "first_release=true" >> "$GITHUB_OUTPUT"
+            echo "No previous tag found -- this is the first release."
+          else
+            echo "first_release=false" >> "$GITHUB_OUTPUT"
+            echo "previous_tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+            echo "Previous tag: $PREVIOUS_TAG"
+          fi
+
+      - name: Generate changelog (subsequent releases only)
+        if: steps.previous_tag.outputs.first_release == 'false'
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --strip header ${{ steps.previous_tag.outputs.previous_tag }}..${{ github.ref_name }}
+
+      - name: Publish to npm
+        env:
+          # setup-node's ~/.npmrc interpolates ${NODE_AUTH_TOKEN} at
+          # publish time, so this is the env-var name to use.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # --access public is required for a fresh unscoped package on the
+        # free tier. --provenance attaches an OIDC-signed attestation so
+        # npm shows the "built and signed on a cloud builder" badge.
+        run: npm publish --access public --provenance
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.content || 'first release' }}
