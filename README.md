@@ -1,4 +1,4 @@
-# claude-code-backup
+# cc-backup
 
 Snapshot your Claude Code history and configuration into a timestamped backup directory. One command captures the data that actually matters: your conversation transcripts, prompt history, settings, and global config. Regenerable caches are left out.
 
@@ -28,13 +28,13 @@ bun run build
 Or run it once without installing globally:
 
 ```sh
-bunx claude-code-backup ~/backups/claude
+bunx cc-backup ~/backups/claude
 ```
 
 ## Usage
 
 ```sh
-claude-code-backup <target-directory> [options]
+cc-backup <target-directory> [options]
 ```
 
 Each run writes to `<target-directory>/<YYYY-MM-DD-HHmm>/files`, mirroring your home layout so a restore is a plain copy back:
@@ -65,13 +65,13 @@ Each run writes to `<target-directory>/<YYYY-MM-DD-HHmm>/files`, mirroring your 
 
 ```sh
 # Core backup
-claude-code-backup ~/backups/claude
+cc-backup ~/backups/claude
 
 # Everything, including the optional tier
-claude-code-backup ~/backups/claude --optional
+cc-backup ~/backups/claude --optional
 
 # See the plan without copying 1 GB of transcripts
-claude-code-backup ~/backups/claude --dry-run
+cc-backup ~/backups/claude --dry-run
 ```
 
 ## Restore
